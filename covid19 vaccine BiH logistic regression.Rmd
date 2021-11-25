@@ -1,0 +1,103 @@
+---
+title: "Covid19 vaccine BiH"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages('readxl')
+install.packages('tidyverse')
+install.packages('dplyr')
+install.packages('gtsummary')
+install.packages('Rcpp')
+install.packages('generalhoslem')
+```
+
+```{r}
+library(readxl)
+library(tidyverse)
+library(gtsummary)
+library(Rcpp)
+library(dplyr)
+library(ResourceSelection)
+library(generalhoslem)
+```
+
+```{r}
+build_df = function(data){                        # Function for raw data pre-processing
+
+  names(data) <- c('Sex', 'Education', 'Occupation', 'Age', 'Income', 'Vaccine4', 'Vaccine') # Naming the variables
+  df = subset(data, select = -Vaccine4)           # Deleting the first four-category vaccination variable
+  df$Sex = as.factor(df$Sex)                      # Converting all numeric variables to factors
+  df$Education = as.factor(df$Education)
+  df$Occupation = as.factor(df$Occupation)
+  df$Age = as.factor(df$Age)
+  df$Income = as.factor(df$Income)
+  df$Vaccine = as.factor(df$Vaccine)
+  levels(df$Sex) = c('Male', 'Female', 'Other')     # Giving category names for all variables
+  levels(df$Education) = c('Postgraduate', 'Graduate', 'High school', 'Primary school')
+  levels(df$Occupation) = c('Medical worker', 'Economic sector', 'Other', 'Service sector', 'Educational worker')
+  levels(df$Age) = c('65 or more', '51 - 64', '31 - 50', '18 - 30')
+  levels(df$Income) = c('900KM or more', '500KM - 900KM', '500KM or less')
+  levels(df$Vaccine) = c('No', 'Yes')
+  return(na.omit(df)) # Function returns a df with all rows with no missing data (no missing data in this data set)
+}
+```
+
+
+```{r}
+data1 = read_excel('data1.xlsx', range = cell_cols('C:I'))
+```
+
+```{r}
+df1 = build_df(data1)
+```
+
+```{r}
+df1
+```
+
+
+```{r}
+logistic <- glm(Vaccine ~ 
+                 relevel(Sex, ref = 'Male') + 
+                 relevel(Education, ref = 'Primary school') + 
+                 relevel(Occupation, ref = 'Medical worker') + 
+                 relevel(Age, ref = '18 - 30') + 
+                 relevel(Income, ref = '500KM or less'), 
+               data = df1, family = binomial)
+```
+
+```{r}
+hoslem.test(logistic$y, fitted(logistic))
+```
+
+```{r}
+logitgof(df1$Vaccine, fitted(logistic))
+```
+
+
+```{r}
+summary(logistic)
+```
+```{r}
+confint(logistic)
+```
+```{r}
+# Beta coefficients
+tbl_regression(logistic, exponentiate = FALSE)
+```
+
+
+```{r}
+# Odds ratios
+tbl_regression(logistic, exponentiate = TRUE)
+```
+
+
